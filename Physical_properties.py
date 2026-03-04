@@ -1,5 +1,6 @@
 import subprocess as sp
-import matplotlib as plt
+import matplotlib.pyplot as plt
+import time
 
 class SystemInfo:
 
@@ -93,7 +94,37 @@ class editor:
         for i in range(len(list_name)):
             out.append(f"{list_name[i]}={list_temp[i]}")
         return out
+    
+class Grafs:
+        def __init__(self):
+            self.temp = Temperature()
 
+        def take_name_gr(self):
+            list_params = self.temp.collect_temp()
+            name_dev = list_params[1]
+            full_temp = []
+            j = 0
+            while j <= 60:
+                temp_i_dev = self.temp.collect_temp()[0]
+                if len(full_temp) < len(name_dev):
+                    for g in range(len(name_dev)):
+                        full_temp.append([])
+                for h in range(len(temp_i_dev)):
+                    full_temp[h].append(temp_i_dev[h])
+                j += 1
+                time.sleep(1)
+            return name_dev, full_temp
+        
+        def graf(self, x, y, name):
+            plt.plot(x, y, label=f"{name}")
+            plt.show()
+
+            
 if __name__ == "__main__":
-    start = editor()
-    print(start.name_temp())
+    grafs = Grafs()
+    data = grafs.take_name_gr()
+    graf_time = []
+    for i in range(0, 61):
+        graf_time.append(i)
+    for j in range(len(list(data[0]))):
+        grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j])
