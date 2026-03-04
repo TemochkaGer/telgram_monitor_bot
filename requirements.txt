@@ -1,0 +1,7 @@
+python-telegram-bot==13.7
+psutil==
+python-dotenv==
+requests
+dotenv
+GPUtil
+tabulate

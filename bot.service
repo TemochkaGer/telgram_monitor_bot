@@ -1,0 +1,20 @@
+[Unit]
+Description=Telegram Server Monitor Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ger
+Group=ger
+WorkingDirectory=/home/ger/test_telegram_bot
+Environment=PATH=/home/ger/test_telegram_bot/venv/bin:/usr/bin:/bin
+ExecStart=/home/ger/test_telegram_bot/venv/bin/python3 /home/ger/test_telegram_bot/Monitor_bot.py
+Restart=always
+RestartSec=10
+
+PIDFile=/tmp/monitor-bot.pid
+ExecStartPre=/bin/bash -c 'if [ -f /tmp/monitor-bot.pid ]; then kill -9 $(cat /tmp/monitor-bot.pid) || true; fi'
+ExecStopPost=/bin/rm -f /tmp/monitor-bot.pid
+
+[Install]
+WantedBy=multi-user.target
