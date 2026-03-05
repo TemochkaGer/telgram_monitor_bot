@@ -2,6 +2,8 @@ import subprocess as sp
 import matplotlib.pyplot as plt
 import time
 
+TIME_FOR_GRAF = 120
+
 class SystemInfo:
 
     def collect_system_info(self):
@@ -104,7 +106,7 @@ class Grafs:
             name_dev = list_params[1]
             full_temp = []
             j = 0
-            while j <= 60:
+            while j <= TIME_FOR_GRAF:
                 temp_i_dev = self.temp.collect_temp()[0]
                 if len(full_temp) < len(name_dev):
                     for g in range(len(name_dev)):
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     grafs = Grafs()
     data = grafs.take_name_gr()
     graf_time = []
-    for i in range(0, 61):
+    for i in range(0, TIME_FOR_GRAF + 1):
         graf_time.append(i)
     for j in range(len(list(data[0]))):
         grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j])
