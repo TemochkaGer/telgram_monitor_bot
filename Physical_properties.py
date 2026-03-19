@@ -28,11 +28,13 @@ class SystemInfo:
             return cpu_model
         except Exception as e:
             logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\n{e}")
+            return
 
 class Temperature:
 
     def __init__(self):
         try:
+            self.indexes_for_dev = self.take_index_hwmon()
             self.edit = Editor()
             self.indexes_for_dev = self.take_index_hwmon()
             logging.info("Инициализация класса Temperature произыкдена успешно!")
@@ -51,32 +53,49 @@ class Temperature:
             return name_devices
         except Exception as e:
             logging.error(f"Ошибка класса Temperature функции collect_dev:\n{e}")
+            return
 
     def collect_temp(self):
+        """Собирает температуры и имена датчиков"""
         try:
-            index_real_dev = []
-            real_temp = []
-            full_temp = ""
-            for i in self.indexes_for_dev:
-                with open(f"/sys/class/hwmon/hwmon{int(i)}/temp1_input", 'r') as f:
-                    temp = f.read()
-                
-                if temp not in '':
-                    index_real_dev.append(i)
-                    logging.info(f"Класс Temperature функция collect_temp смогла получить температуру одного из девайсов:\n{temp.stdout.decode('utf-8')}")
-                else:
-                    logging.error(f"Ошибка класса Temperature функции collect_temp:\n{temp.stderr}")
-                
-                full_temp += temp.stdout.decode('utf-8')
-            full_temp = self.edit.sort_stdout(full_temp)
+            index_real_dev = []  
+            real_temp = []       
             
-            for i in full_temp:
-                i = int(i)/1000
-                real_temp.append(i)
-            logging.info("Класс Temperature функция collect_temp отработала штатно!")
-            return real_temp, self.collect_dev(index_real_dev)
+            for i in self.indexes_for_dev:
+                temp_file = f"/sys/class/hwmon/hwmon{i}/temp1_input"
+                
+                try:
+                    with open(temp_file, 'r') as f:
+                        raw_value = f.read().strip()  
+                    
+                    if raw_value and raw_value.lstrip('-').isdigit():  
+                        temp_celsius = float(raw_value) / 1000.0
+                        real_temp.append(temp_celsius)      
+                        index_real_dev.append(i)            
+                        logging.info(f"Датчик hwmon{i}: {temp_celsius}°C")
+                    else:
+                        logging.warning(f"Некорректное значение в {temp_file}: '{raw_value}'")
+                        
+                except FileNotFoundError:
+                    logging.warning(f"Файл не найден: {temp_file}")
+                    continue
+                except PermissionError:
+                    logging.warning(f"Нет прав: {temp_file}")
+                    continue
+                except ValueError as e:
+                    logging.error(f"Ошибка преобразования '{raw_value}': {e}")
+                    continue
+            
+            logging.info(f"Собрано: {len(real_temp)} температур")
+            
+            if real_temp:
+                return real_temp, self.collect_dev(index_real_dev)
+            else:
+                return [], []
+                
         except Exception as e:
-            logging.error(f"Ошибка класса Temperature функции collect_temp:\n{e}")
+            logging.error(f"Критическая ошибка в collect_temp: {e}")
+            return [], []
 
     def take_index_hwmon(self):
         try:
@@ -92,6 +111,7 @@ class Temperature:
             return list_file
         except Exception as e:
             logging.error(f"Ошибка класса Temperature функции take_index_hwmon:\n{e}")
+            return
         
 class Editor:
 
@@ -105,6 +125,7 @@ class Editor:
             return end_str
         except Exception as e:
             logging.error(f"Ошибка класса editor функции del_spase:\n{e}")
+            return
 
     def sort_stdout(self, process):
         try:
@@ -116,6 +137,7 @@ class Editor:
             return out
         except Exception as e:
             logging.error(f"Ошибка класса editor функции sort_stdout:\n{e}")
+            return
     
     def name_temp(self):
         try:
@@ -130,6 +152,7 @@ class Editor:
             return out
         except Exception as e:
             logging.error(f"Ошибка класса editor функции name_temp:\n{e}")
+            return
     
 class Grafs:
         def __init__(self):
@@ -139,13 +162,13 @@ class Grafs:
             except Exception as e:
                 logging.error(f"Ошибка при инициализации класса Grafs:\n{e}")
 
-        def take_name_gr(self):
+        def take_name_gr(self, t):
             try:
                 list_params = self.temp.collect_temp()
                 name_dev = list_params[1]
                 full_temp = []
                 j = 0
-                while j <= 60:
+                while j <= t:
                     temp_i_dev = self.temp.collect_temp()[0]
                     if len(full_temp) < len(name_dev):
                         for g in range(len(name_dev)):
@@ -158,8 +181,8 @@ class Grafs:
                 return name_dev, full_temp
             except Exception as e:
                 logging.error(f"Ошибка класса Grafs функции take_name_gr:\n{e}")
+                return
             
-        
         def graf(self, x, y, name):
             try:
                 plt.plot(x, y, label=name)
@@ -167,12 +190,14 @@ class Grafs:
                 logging.info("Класс Grafs функция graf отработала штатно!")
             except Exception as e:
                 logging.error(f"Ошибка класса Grafs функции graf:\n{e}")
+                return
             
 if __name__ == "__main__":
+    t = 360
     grafs = Grafs()
-    data = grafs.take_name_gr()
+    data = grafs.take_name_gr(t=t)
     graf_time = []
-    for i in range(0, 61):
+    for i in range(0, t + 1):
         graf_time.append(i)
     for j in range(len(list(data[0]))):
         grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j])
