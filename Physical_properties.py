@@ -22,8 +22,9 @@ class SystemInfo:
 
     def collect_system_info(self):
         try:
-            cpu_model = sp.run('lscpu | grep "Имя модели"', shell=True, capture_output=True, timeout=2)
-            cpu_model = self.edit.del_spase((str(cpu_model.stdout)).split(":")[1], '/?|\\, ')
+            with open ("/proc/cpuinfo", "r") as f:
+                cpu_model = f.read()
+            cpu_model = self.edit.take_info(parameter="model name", line=cpu_model)
             logging.info("Класс SystemInfo класс collect_system_info отработал штатно!")
             return cpu_model
         except Exception as e:
@@ -86,7 +87,7 @@ class Temperature:
                     logging.error(f"Ошибка преобразования '{raw_value}': {e}")
                     continue
             
-            logging.info(f"Собрано: {len(real_temp)} температур")
+            logging.info(f"Собрано: {len(real_temp)} температур(ы)")
             
             if real_temp:
                 return real_temp, self.collect_dev(index_real_dev)
@@ -153,6 +154,20 @@ class Editor:
         except Exception as e:
             logging.error(f"Ошибка класса editor функции name_temp:\n{e}")
             return
+        
+    def take_info(self, parameter: str, line: str):
+        try:
+            final_info = ""
+            line = line.split("\n")
+            for list_elem in line:
+                if parameter in list_elem:
+                    final_info += list_elem
+                    break
+            logging.info("Editor: take_info отработал штатно!")
+            return final_info
+        except Exception as e:
+            logging.error(f"Edotor: take_info завершился с ошибкой: {e}")
+            return ""
     
 class Grafs:
         def __init__(self):
@@ -193,11 +208,16 @@ class Grafs:
                 return
             
 if __name__ == "__main__":
-    t = 360
-    grafs = Grafs()
-    data = grafs.take_name_gr(t=t)
-    graf_time = []
-    for i in range(0, t + 1):
-        graf_time.append(i)
-    for j in range(len(list(data[0]))):
-        grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j])
+    number_do = int(input(""))
+    if number_do == 1:
+        info = SystemInfo()
+        print(info.collect_system_info())
+    elif number_do == 2:
+        t = 360
+        grafs = Grafs()
+        data = grafs.take_name_gr(t=t)
+        graf_time = []
+        for i in range(0, t + 1):
+            graf_time.append(i)
+        for j in range(len(list(data[0]))):
+            grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j])
