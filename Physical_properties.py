@@ -22,11 +22,25 @@ class SystemInfo:
 
     def collect_system_info(self):
         try:
-            with open ("/proc/cpuinfo", "r") as f:
-                cpu_model = f.read()
-            cpu_model = self.edit.take_info(parameter="model name", line=cpu_model)
-            logging.info("Класс SystemInfo класс collect_system_info отработал штатно!")
-            return cpu_model
+            devices = ["/proc/cpuinfo", "/proc/meminfo"]
+            info_massage = ''
+
+            for device in devices:
+                with open (device, "r") as f:
+                    model = f.read()
+
+                if device == "/proc/cpuinfo":
+                    model = self.edit.take_info(parameter="model name", line=model)
+                elif device == "/proc/meminfo":
+                    model = self.edit.take_info(parameter="MemTotal", line=model)
+                info_massage += f"{model}\n"
+                
+                logging.info("Класс SystemInfo класс collect_system_info отработал штатно!")
+            return info_massage
+        except PermissionError:
+            logging.error("Ошибка класса SystemInfo функции collect_system_info:\nНет прав на чтение файла /proc/cpuinfo!")
+        except FileNotFoundError:
+            logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\nОтсутствие файла /proc/cpuinfo!")
         except Exception as e:
             logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\n{e}")
             return
@@ -208,7 +222,7 @@ class Grafs:
                 return
             
 if __name__ == "__main__":
-    number_do = int(input(""))
+    number_do = int(input("1 - Информация о системе\n2 - Температурный график\nВведите дуйствие: "))
     if number_do == 1:
         info = SystemInfo()
         print(info.collect_system_info())
