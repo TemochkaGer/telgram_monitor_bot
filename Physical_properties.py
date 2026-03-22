@@ -264,17 +264,21 @@ class Grafs:
                 return
             
 if __name__ == "__main__":
-    number_do = int(input("1 - Информация о системе\n2 - Температурный график\nВведите действие: "))
-    if number_do == 1:
-        info = SystemInfo()
-        print(info.collect_system_info())
-    elif number_do == 2:
-        time = int(input("Введите временной отрезок в секундах: "))
-        grafs = Grafs()
-        data = grafs.take_name_gr(duration=time)
-        graf_time = []
-        for i in range(0, time + 1):
-            graf_time.append(i)
-        for j in range(len(list(data[0]))):
-            grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j], xlable="Время в секундах", ylabel="Температура в градусах")
-            print()
+    a =True
+    while a:
+        number_do = int(input("1 - Информация о системе\n2 - Температурный график\nВведите действие: "))
+        if number_do == 1:
+            info = SystemInfo()
+            print(info.collect_system_info())
+        elif number_do == 2:
+            time = int(input("Введите временной отрезок в секундах: "))
+            grafs = Grafs()
+            data = grafs.take_name_gr(duration=time)
+            graf_time = []
+            for i in range(0, time + 1):
+                graf_time.append(i)
+            for j in range(len(list(data[0]))):
+                grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j], xlable="Время в секундах", ylabel="Температура в градусах")
+                print()
+        elif number_do == 3:
+            a = False
