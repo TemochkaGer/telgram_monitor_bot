@@ -3,4 +3,4 @@
 *.txt
 .vscode
 *venv
-.png
+*.png
