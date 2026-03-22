@@ -1,4 +1,3 @@
-import subprocess as sp
 import matplotlib.pyplot as plt
 import time as tm
 import logging
@@ -74,7 +73,6 @@ class Temperature:
                         list_devices = f.read()
                     # name_devices.append(list_devices)
                     name_devices += list_devices
-                    print(name_devices)
                     
                 except FileNotFoundError:
                     logging.error(f"Ошибка класса Temperature функции collect_dev:\nОшибка существования файла /sys/class/hwmon/{index_devices}!")
@@ -202,8 +200,10 @@ class Editor:
         
     def text_replacement(self, full_line: str, original: str, new_word: str):
         try:
-            if original in full_line:
-                full_line = full_line.replace(original, new_word)
+            if original in full_line and ":" in full_line:
+                value = full_line.split(":", 1)[1]
+                value = value.strip()
+                full_line = f"{new_word}: {value}"
                 logging.info(f"Editor: text_replacement успешно заменил оригинальную строку на новую!")
                 return full_line
             elif original not in full_line:
@@ -224,7 +224,7 @@ class Grafs:
             except Exception as e:
                 logging.error(f"Ошибка при инициализации класса Grafs:\n{e}")
 
-        def take_name_gr(self, time: int):
+        def take_name_gr(self, duration: int):
             try:
                 _, name_dev = self.temp.collect_temp()
                 if not name_dev:
@@ -233,12 +233,12 @@ class Grafs:
                 
                 full_temp = [[] for _ in name_dev]
                 
-                for time in range(time + 1):
+                for second in range(duration + 1):
                     temps, _ = self.temp.collect_temp()
                     for idx, temp_val in enumerate(temps):
                         if idx < len(full_temp):
                             full_temp[idx].append(temp_val)
-                        tm.sleep(1)
+                    tm.sleep(1)
 
                 logging.info("Класс Grafs функция take_name_gr отработала штатно!")
                 return name_dev, full_temp
@@ -255,7 +255,7 @@ class Grafs:
                 plt.title(name)
                 plt.show()
 
-                filename = f"Graf_{name.replace(" ", "_")}.png"
+                filename = f"Graf_{name.replace(' ', '_')}.png"
                 plt.savefig(filename)
                 logging.info("Класс Grafs функция graf отработала штатно!")
                 plt.close()
@@ -271,9 +271,10 @@ if __name__ == "__main__":
     elif number_do == 2:
         time = int(input("Введите временной отрезок в секундах: "))
         grafs = Grafs()
-        data = grafs.take_name_gr(time=time)
+        data = grafs.take_name_gr(duration=time)
         graf_time = []
         for i in range(0, time + 1):
             graf_time.append(i)
         for j in range(len(list(data[0]))):
             grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j], xlable="Время в секундах", ylabel="Температура в градусах")
+            print()
