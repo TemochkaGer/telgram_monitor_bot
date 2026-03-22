@@ -1,5 +1,6 @@
 *.log
 .env
 *.txt
-.vacode
+.vscode
 *venv
+.png

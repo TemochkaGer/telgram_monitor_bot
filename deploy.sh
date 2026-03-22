@@ -4,7 +4,7 @@ set -euo pipefail
 
 echo "Начинаем установку пакетов и зависимостей!"
 
-way_to_directory="$(pwd)/Python/test_telegram_bot"
+way_to_directory="$(pwd)"
 
 echo "$way_to_directory"
 

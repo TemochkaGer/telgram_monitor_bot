@@ -1,6 +1,6 @@
 import subprocess as sp
 import matplotlib.pyplot as plt
-import time
+import time as tm
 import logging
 import os
 
@@ -16,34 +16,43 @@ class SystemInfo:
     def __init__(self):
         try:
             self.edit = Editor()
-            logging.info("Инициализация класса SystemInfo произыкдена успешно!")
+            logging.info("Инициализация класса SystemInfo произведена успешно!")
         except Exception as e:
             logging.error(f"Ошибка при инициализации класса SystemInfo:\n{e}")
 
     def collect_system_info(self):
         try:
-            devices = ["/proc/cpuinfo", "/proc/meminfo"]
-            info_massage = ''
+            devices = ["/proc/cpuinfo", "/proc/meminfo", "/proc/driver/nvidia/gpus/0000:01:00.0/information"]
+            info_message = ''
 
             for device in devices:
-                with open (device, "r") as f:
-                    model = f.read()
+                try:
+                    with open (device, "r") as f:
+                        model = f.read()
 
-                if device == "/proc/cpuinfo":
-                    model = self.edit.take_info(parameter="model name", line=model)
-                elif device == "/proc/meminfo":
-                    model = self.edit.take_info(parameter="MemTotal", line=model)
-                info_massage += f"{model}\n"
-                
-                logging.info("Класс SystemInfo класс collect_system_info отработал штатно!")
-            return info_massage
-        except PermissionError:
-            logging.error("Ошибка класса SystemInfo функции collect_system_info:\nНет прав на чтение файла /proc/cpuinfo!")
-        except FileNotFoundError:
-            logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\nОтсутствие файла /proc/cpuinfo!")
+                    if device == "/proc/cpuinfo":
+                        model = self.edit.take_info(parameter="model name", line=model)
+                        model = self.edit.text_replacement(full_line=model, original="model name", new_word="Процессор")
+                    elif device == "/proc/meminfo":
+                        model = self.edit.take_info(parameter="MemTotal", line=model)
+                        model = self.edit.text_replacement(full_line=model, original="MemTotal", new_word="Объем ОЗУ")
+                    elif device == "/proc/driver/nvidia/gpus/0000:01:00.0/information":
+                        model = self.edit.take_info(parameter="Model", line=model)
+                        model = self.edit.text_replacement(full_line=model, original="Model", new_word="Видеокарта")
+                    info_message += f"{model}\n"
+                    
+                    logging.info(f"Класс SystemInfo класс collect_system_info принял данные файла {device}!")
+                except PermissionError:
+                    logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\nНет прав на чтение файла {device}!")
+                    continue
+                except FileNotFoundError:
+                    logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\nОтсутствие файла {device}!")
+                    continue
+            logging.info(f"Класс SystemInfo класс collect_system_info отработал штатно!")
+            return info_message
         except Exception as e:
             logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\n{e}")
-            return
+            return ""
 
 class Temperature:
 
@@ -51,38 +60,45 @@ class Temperature:
         try:
             self.indexes_for_dev = self.take_index_hwmon()
             self.edit = Editor()
-            self.indexes_for_dev = self.take_index_hwmon()
-            logging.info("Инициализация класса Temperature произыкдена успешно!")
+            logging.info("Инициализация класса Temperature произведена успешно!")
         except Exception as e:
             logging.error(f"Ошибка при инициализации класса Temperature:\n{e}")
     
     def collect_dev(self, indexes_for_dev_with_temp):
+        "Функция собирает имена девайсов из /sys/class/hwmon/"
         try:
-            name_devices = ''
-            for i in indexes_for_dev_with_temp:
-                with open(f"/sys/class/hwmon/hwmon{int(i)}/name", 'r') as f:
-                    list_devices = f.read()
-                name_devices += list_devices
+            name_devices = ""
+            for index_devices in indexes_for_dev_with_temp:
+                try:
+                    with open(f"/sys/class/hwmon/{index_devices}/name", 'r') as f:
+                        list_devices = f.read()
+                    # name_devices.append(list_devices)
+                    name_devices += list_devices
+                    print(name_devices)
+                    
+                except FileNotFoundError:
+                    logging.error(f"Ошибка класса Temperature функции collect_dev:\nОшибка существования файла /sys/class/hwmon/{index_devices}!")
+                    continue
+                except PermissionError:
+                    logging.error(f"Ошибка класса Temperature функции collect_dev:\nОшибка прав на чтение файла /sys/class/hwmon/{index_devices}!")
+                    continue
+
             name_devices = self.edit.sort_stdout(name_devices)
             logging.info("Класс Temperature функция collect_dev отработал штатно!")
             return name_devices
-        except FileNotFoundError:
-            logging.error("Ошибка класса Temperature функции collect_dev:\nОшибка существования файла!")
-            return
-        except PermissionError:
-            logging.error("Ошибка класса Temperature функции collect_dev:\nОшибка прав на чтений файла!")
         except Exception as e:
             logging.error(f"Ошибка класса Temperature функции collect_dev:\n{e}")
-            return
+            return []
 
     def collect_temp(self):
         """Собирает температуры и имена датчиков"""
         try:
             index_real_dev = []  
-            real_temp = []       
+            real_temp = []
+                   
             
             for i in self.indexes_for_dev:
-                temp_file = f"/sys/class/hwmon/hwmon{i}/temp1_input"
+                temp_file = f"/sys/class/hwmon/{i}/temp1_input"
                 
                 try:
                     with open(temp_file, 'r') as f:
@@ -92,7 +108,7 @@ class Temperature:
                         temp_celsius = float(raw_value) / 1000.0
                         real_temp.append(temp_celsius)      
                         index_real_dev.append(i)            
-                        logging.info(f"Датчик hwmon{i}: {temp_celsius}°C")
+                        logging.info(f"Датчик {i}: {temp_celsius}°C")
                     else:
                         logging.warning(f"Некорректное значение в {temp_file}: '{raw_value}'")
                         
@@ -118,46 +134,42 @@ class Temperature:
             return [], []
 
     def take_index_hwmon(self):
+
         try:
             list_file = []
             list_dir = os.listdir("/sys/class/hwmon/")
-            for i in list_dir:
-                for j in i:
-                    if j in 'HhWwMmOoNn':
-                        i = i.replace(j, '')
-                list_file.append(i)
+            for file_name in list_dir:
+                if "hwmon" in file_name:
+                    list_file.append(file_name)
 
             logging.info("Класс Temperature функция take_index_hwmon отработала штатно!")
             return list_file
         except Exception as e:
             logging.error(f"Ошибка класса Temperature функции take_index_hwmon:\n{e}")
-            return
+            return []
         
 class Editor:
 
     def del_spase(self, str_sp, elem_str):
         try:
             end_str = ""
-            for i in range(len(str_sp) - 2):
+            for i in range(len(str_sp)):
                 if str_sp[i] not in elem_str:
                     end_str += str_sp[i]
             logging.info("Класс editor функция del_spase отработала штатно!")
             return end_str
         except Exception as e:
             logging.error(f"Ошибка класса editor функции del_spase:\n{e}")
-            return
+            return ""
 
-    def sort_stdout(self, process):
+    def sort_stdout(self, process: str):
         try:
-            if str(type(process)) == "<class 'subprocess.CompletedProcess'>":
-                out = (str(process.stdout.decode('utf-8'))).strip().split('\n')
-            else:
-                out = process.strip().split('\n')
+            out = process.strip().split('\n')
             logging.info("Класс editor функция sort_stdout отработала штатно!")
             return out
         except Exception as e:
             logging.error(f"Ошибка класса editor функции sort_stdout:\n{e}")
-            return
+            return []
     
     def name_temp(self):
         try:
@@ -172,7 +184,7 @@ class Editor:
             return out
         except Exception as e:
             logging.error(f"Ошибка класса editor функции name_temp:\n{e}")
-            return
+            return []
         
     def take_info(self, parameter: str, line: str):
         try:
@@ -185,58 +197,83 @@ class Editor:
             logging.info("Editor: take_info отработал штатно!")
             return final_info
         except Exception as e:
-            logging.error(f"Edotor: take_info завершился с ошибкой: {e}")
+            logging.error(f"Editor: take_info завершился с ошибкой: {e}")
+            return ""
+        
+    def text_replacement(self, full_line: str, original: str, new_word: str):
+        try:
+            if original in full_line:
+                full_line = full_line.replace(original, new_word)
+                logging.info(f"Editor: text_replacement успешно заменил оригинальную строку на новую!")
+                return full_line
+            elif original not in full_line:
+                logging.warning(f"Editor: text_replacement не нашел вхождений параметра {original} в параметр {full_line}")
+                return ""
+            else:
+                logging.error("Editor: text_replacement ошибка в коде!")
+                return ""
+        except Exception as e:
+            logging.error(f"Editor: text_replacement завершился с ошибкой:\n{e}")
             return ""
     
 class Grafs:
         def __init__(self):
             try:
                 self.temp = Temperature()
-                logging.info("Инициализация класса Grafs произыкдена успешно!")
+                logging.info("Инициализация класса Grafs произведена успешно!")
             except Exception as e:
                 logging.error(f"Ошибка при инициализации класса Grafs:\n{e}")
 
-        def take_name_gr(self, t):
+        def take_name_gr(self, time: int):
             try:
-                list_params = self.temp.collect_temp()
-                name_dev = list_params[1]
-                full_temp = []
-                j = 0
-                while j <= t:
-                    temp_i_dev = self.temp.collect_temp()[0]
-                    if len(full_temp) < len(name_dev):
-                        for g in range(len(name_dev)):
-                            full_temp.append([])
-                    for h in range(len(temp_i_dev)):
-                        full_temp[h].append(temp_i_dev[h])
-                    j += 1
-                    time.sleep(1)
+                _, name_dev = self.temp.collect_temp()
+                if not name_dev:
+                    logging.warning("Не уалось получить имя датчиков для графиков!")
+                    return [], []
+                
+                full_temp = [[] for _ in name_dev]
+                
+                for time in range(time + 1):
+                    temps, _ = self.temp.collect_temp()
+                    for idx, temp_val in enumerate(temps):
+                        if idx < len(full_temp):
+                            full_temp[idx].append(temp_val)
+                        tm.sleep(1)
+
                 logging.info("Класс Grafs функция take_name_gr отработала штатно!")
                 return name_dev, full_temp
             except Exception as e:
                 logging.error(f"Ошибка класса Grafs функции take_name_gr:\n{e}")
-                return
+                return [], []
             
-        def graf(self, x, y, name):
+        def graf(self, x: list, y: list, name: str, xlable: str, ylabel: str):
             try:
+                plt.figure(figsize=(10, 6))
                 plt.plot(x, y, label=name)
+                plt.xlabel(xlable)
+                plt.ylabel(ylabel)
+                plt.title(name)
                 plt.show()
+
+                filename = f"Graf_{name.replace(" ", "_")}.png"
+                plt.savefig(filename)
                 logging.info("Класс Grafs функция graf отработала штатно!")
+                plt.close()
             except Exception as e:
                 logging.error(f"Ошибка класса Grafs функции graf:\n{e}")
                 return
             
 if __name__ == "__main__":
-    number_do = int(input("1 - Информация о системе\n2 - Температурный график\nВведите дуйствие: "))
+    number_do = int(input("1 - Информация о системе\n2 - Температурный график\nВведите действие: "))
     if number_do == 1:
         info = SystemInfo()
         print(info.collect_system_info())
     elif number_do == 2:
-        t = 360
+        time = int(input("Введите временной отрезок в секундах: "))
         grafs = Grafs()
-        data = grafs.take_name_gr(t=t)
+        data = grafs.take_name_gr(time=time)
         graf_time = []
-        for i in range(0, t + 1):
+        for i in range(0, time + 1):
             graf_time.append(i)
         for j in range(len(list(data[0]))):
-            grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j])
+            grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j], xlable="Время в секундах", ylabel="Температура в градусах")
