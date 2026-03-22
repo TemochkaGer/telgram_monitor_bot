@@ -66,6 +66,11 @@ class Temperature:
             name_devices = self.edit.sort_stdout(name_devices)
             logging.info("Класс Temperature функция collect_dev отработал штатно!")
             return name_devices
+        except FileNotFoundError:
+            logging.error("Ошибка класса Temperature функции collect_dev:\nОшибка существования файла!")
+            return
+        except PermissionError:
+            logging.error("Ошибка класса Temperature функции collect_dev:\nОшибка прав на чтений файла!")
         except Exception as e:
             logging.error(f"Ошибка класса Temperature функции collect_dev:\n{e}")
             return
