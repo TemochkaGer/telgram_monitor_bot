@@ -13,15 +13,35 @@ logging.basicConfig(
 class SystemInfo:
 
     def __init__(self):
+        "Инициализирует переменные videocards - переменная, содержащая названия директорий драйверов всех видеокарт nvidia в системе, edit - класс обработки информации"
         try:
+            self.videocards = self.take_vd_driver()
             self.edit = Editor()
             logging.info("Инициализация класса SystemInfo произведена успешно!")
         except Exception as e:
             logging.error(f"Ошибка при инициализации класса SystemInfo:\n{e}")
 
-    def collect_system_info(self):
+    def take_vd_driver(self):
+        "Функция собирает список подключенных видеоустройств nvidia и возвращает список этих устройств"
         try:
-            devices = ["/proc/cpuinfo", "/proc/meminfo", "/proc/driver/nvidia/gpus/0000:01:00.0/information"]
+            videocards = os.listdir("/proc/driver/nvidia/gpus/")
+            logging.info("SystemInfo: take_vd_driver -  Отработал успешно!")
+            return videocards
+        except PermissionError:
+            logging.error("SystemInfo: take_vd_driver - Нет прав на чтение директории /proc/driver/nvidia/gpus/!")
+            return []
+        except FileNotFoundError:
+            logging.error("SystemInfo: take_vd_driver - Файла /proc/driver/nvidia/gpus/ не существует!")
+            return []
+        except Exception as e:
+            logging.error(f"SystemInfo: take_vd_driver - Непредвиденная ошибка чтения файла /proc/driver/nvidia/gpus/:\n{e}")
+            return []
+
+
+    def collect_system_info(self):
+        "Функция собирает информацию о системе: Процессор, объем ОЗУ, Видеокарты и выводит их"
+        try:
+            devices = ["/proc/cpuinfo", "/proc/meminfo"] + self.videocards
             info_message = ''
 
             for device in devices:
@@ -54,8 +74,10 @@ class SystemInfo:
             return ""
 
 class Temperature:
+    "Класс собирает метрики темературы со всех устройств материнской платы, edit - класс обработки информации"
 
     def __init__(self):
+        "Инициализирует переменную indexes_for_dev - список всех устройств мат. платы, "
         try:
             self.indexes_for_dev = self.take_index_hwmon()
             self.edit = Editor()
@@ -132,7 +154,7 @@ class Temperature:
             return [], []
 
     def take_index_hwmon(self):
-
+        "Собирает индексы устройств системы"
         try:
             list_file = []
             list_dir = os.listdir("/sys/class/hwmon/")
@@ -147,8 +169,10 @@ class Temperature:
             return []
         
 class Editor:
+    "Класс обработки текста"
 
     def del_spase(self, str_sp, elem_str):
+        "Удаляет все вхожления указанного элемента в строке"
         try:
             end_str = ""
             for i in range(len(str_sp)):
