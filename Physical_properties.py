@@ -4,9 +4,10 @@ import logging
 import os
 
 logging.basicConfig(
-    filename="Monitoring.log",
+    filename=f"{os.getcwd()}/log/Monitoring.log",
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
+    
     encoding='utf-8'
 )
 
@@ -280,7 +281,7 @@ class Grafs:
                 plt.show()
 
                 filename = f"Graf_{name.replace(' ', '_')}.png"
-                plt.savefig(filename)
+                plt.savefig(f"{os.getcwd()}/grafs/{filename}")
                 logging.info("Класс Grafs функция graf отработала штатно!")
                 plt.close()
             except Exception as e:

@@ -1,0 +1,17 @@
+networks:
+  monitoring-test:
+    driver: bridge
+
+services:
+  monitoring-service:
+    image: python-monitoring:v1
+    container_name: my-test-monitoring
+    restart: unless-stopped
+    volumes:
+      - /proc/:/proc/:ro
+      - /sys/class/hwmon/:/sys/class/hwmon/:ro
+      - ./log:/app/log
+      - ./grafs:/app/grafs
+    networks:
+      - monitoring-test
+    user: dockeruser
