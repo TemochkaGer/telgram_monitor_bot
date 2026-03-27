@@ -7,9 +7,59 @@ logging.basicConfig(
     filename=f"{os.getcwd()}/log/Monitoring.log",
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    
     encoding='utf-8'
 )
+
+class Management:
+
+    def __init__(self):
+        try:
+            self.info = SystemInfo()
+            self.temp = Temperature()
+            self.graf = Grafs()
+            self.time = list(range(86401))
+            directory_name = [f"{os.getcwd()}/log", f"{os.getcwd()}/grafs", f"{os.getcwd()}/SysInfo"]
+            for dir in directory_name:
+                os.makedirs(dir, exist_ok = True)
+            logging.info("Management: __init__ отработал успешно!")
+        except Exception as e:
+            logging.error(f"Management: __init__ упал с ошибкой:\n{e}")
+
+    def run(self):
+        try:
+            all_temps = []
+            all_names = None
+            count = [14400, 28800, 43200, 57600, 72000, 86400]
+            with open(f"{os.getcwd()}/SysInfo/Sysinfo.txt", "w") as f:
+                f.write(self.info.collect_system_info())
+            for second in range(self.time[-1] + 1):
+                temps, names = self.temp.collect_temp()
+
+                if all_names is None:
+                    all_names = names
+                    all_temps = [[] for _ in names]
+
+                for idx, temp_val in enumerate(temps):
+                    if idx < len(all_temps):
+                        all_temps[idx].append(temp_val)
+            
+                if second in count and all_names:
+                    for graf_idx in range(len(all_names)):
+                        if len(all_temps[graf_idx]) > 1:
+                            self.graf.graf(
+                                x = list(range(second + 1)),
+                                y = all_temps[graf_idx],
+                                name = all_names[graf_idx],
+                                xlable = "Время в секундах",
+                                ylabel = "Температура в градусах"
+                            )
+                
+                tm.sleep(1)
+
+            logging.info("Management: run отработал штатно!")
+        except Exception as e:
+            logging.error(f"Management: run упал с ошибкой:\n{e}")
+
 
 class SystemInfo:
 
@@ -26,8 +76,11 @@ class SystemInfo:
         "Функция собирает список подключенных видеоустройств nvidia и возвращает список этих устройств"
         try:
             videocards = os.listdir("/proc/driver/nvidia/gpus/")
+            full_gpu = []
+            for device in videocards:
+                full_gpu.append(f"/proc/driver/nvidia/gpus/{device}")
             logging.info("SystemInfo: take_vd_driver -  Отработал успешно!")
-            return videocards
+            return full_gpu
         except PermissionError:
             logging.error("SystemInfo: take_vd_driver - Нет прав на чтение директории /proc/driver/nvidia/gpus/!")
             return []
@@ -56,7 +109,7 @@ class SystemInfo:
                     elif device == "/proc/meminfo":
                         model = self.edit.take_info(parameter="MemTotal", line=model)
                         model = self.edit.text_replacement(full_line=model, original="MemTotal", new_word="Объем ОЗУ")
-                    elif device == "/proc/driver/nvidia/gpus/0000:01:00.0/information":
+                    elif "/proc/driver/nvidia/gpus/" in device:
                         model = self.edit.take_info(parameter="Model", line=model)
                         model = self.edit.text_replacement(full_line=model, original="Model", new_word="Видеокарта")
                     info_message += f"{model}\n"
@@ -75,7 +128,7 @@ class SystemInfo:
             return ""
 
 class Temperature:
-    "Класс собирает метрики темературы со всех устройств материнской платы, edit - класс обработки информации"
+    "Класс собирает метрики температуры со всех устройств материнской платы, edit - класс обработки информации"
 
     def __init__(self):
         "Инициализирует переменную indexes_for_dev - список всех устройств мат. платы, "
@@ -253,7 +306,7 @@ class Grafs:
             try:
                 _, name_dev = self.temp.collect_temp()
                 if not name_dev:
-                    logging.warning("Не уалось получить имя датчиков для графиков!")
+                    logging.warning("Не удалось получить имя датчиков для графиков!")
                     return [], []
                 
                 full_temp = [[] for _ in name_dev]
@@ -278,7 +331,7 @@ class Grafs:
                 plt.xlabel(xlable)
                 plt.ylabel(ylabel)
                 plt.title(name)
-                plt.show()
+                # plt.show()
 
                 filename = f"Graf_{name.replace(' ', '_')}.png"
                 plt.savefig(f"{os.getcwd()}/grafs/{filename}")
@@ -289,21 +342,5 @@ class Grafs:
                 return
             
 if __name__ == "__main__":
-    a =True
-    while a:
-        number_do = int(input("1 - Информация о системе\n2 - Температурный график\nВведите действие: "))
-        if number_do == 1:
-            info = SystemInfo()
-            print(info.collect_system_info())
-        elif number_do == 2:
-            time = int(input("Введите временной отрезок в секундах: "))
-            grafs = Grafs()
-            data = grafs.take_name_gr(duration=time)
-            graf_time = []
-            for i in range(0, time + 1):
-                graf_time.append(i)
-            for j in range(len(list(data[0]))):
-                grafs.graf(x = graf_time, y = list(data)[1][j], name = list(data)[0][j], xlable="Время в секундах", ylabel="Температура в градусах")
-                print()
-        elif number_do == 3:
-            a = False
+    start = Management()
+    start.run()
