@@ -1,10 +1,19 @@
 import matplotlib.pyplot as plt
 import time as tm
 import logging
+from logging.handlers import RotatingFileHandler
 import os
+import psutil
+
+handler = RotatingFileHandler(
+    f"{os.getcwd()}/log/Monitoring.log",
+    maxBytes=15*1024*1024,
+    backupCount=3,
+    encoding='utf-8'
+)
 
 logging.basicConfig(
-    filename=f"{os.getcwd()}/log/Monitoring.log",
+    handlers=[handler],
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     encoding='utf-8'
@@ -19,8 +28,8 @@ class Management:
             self.graf = Grafs()
             self.time = list(range(86401))
             directory_name = [f"{os.getcwd()}/log", f"{os.getcwd()}/grafs", f"{os.getcwd()}/SysInfo"]
-            for dir in directory_name:
-                os.makedirs(dir, exist_ok = True)
+            for directory in directory_name:
+                os.makedirs(directory, exist_ok = True)
             logging.info("Management: __init__ отработал успешно!")
         except Exception as e:
             logging.error(f"Management: __init__ упал с ошибкой:\n{e}")
@@ -32,6 +41,7 @@ class Management:
             count = [14400, 28800, 43200, 57600, 72000, 86400]
             with open(f"{os.getcwd()}/SysInfo/Sysinfo.txt", "w") as f:
                 f.write(self.info.collect_system_info())
+                f.write(f"Диски:\n{self.info.get_mounts()}")
             for second in range(self.time[-1] + 1):
                 temps, names = self.temp.collect_temp()
 
@@ -50,16 +60,13 @@ class Management:
                                 x = list(range(second + 1)),
                                 y = all_temps[graf_idx],
                                 name = all_names[graf_idx],
-                                xlable = "Время в секундах",
+                                xlabel = "Время в секундах",
                                 ylabel = "Температура в градусах"
                             )
-                
                 tm.sleep(1)
-
             logging.info("Management: run отработал штатно!")
         except Exception as e:
             logging.error(f"Management: run упал с ошибкой:\n{e}")
-
 
 class SystemInfo:
 
@@ -126,6 +133,21 @@ class SystemInfo:
         except Exception as e:
             logging.error(f"Ошибка класса SystemInfo функции collect_system_info:\n{e}")
             return ""
+        
+    def get_mounts(self):
+        try:
+            full_info = []
+            for disk in psutil.disk_partitions(all=False):
+                full_info.append(
+                    f"Устройство: {disk.device}\n"
+                    f"Точка монтирования: {disk.mountpoint}\n"
+                    f"Тип файловой системы: {disk.fstype}\n"
+                )
+            logging.info("SystemInfo: get_mounts отработала штатно!")
+            return "\n".join(full_info)
+        except Exception as e:
+            logging.error(f"SystemInfo: get_mounts непредвиденная ошибка:\n{e}")
+            return ""
 
 class Temperature:
     "Класс собирает метрики температуры со всех устройств материнской платы, edit - класс обработки информации"
@@ -142,13 +164,13 @@ class Temperature:
     def collect_dev(self, indexes_for_dev_with_temp):
         "Функция собирает имена девайсов из /sys/class/hwmon/"
         try:
-            name_devices = ""
+            name_devices = []
             for index_devices in indexes_for_dev_with_temp:
                 try:
                     with open(f"/sys/class/hwmon/{index_devices}/name", 'r') as f:
-                        list_devices = f.read()
+                        list_devices = f.read().strip()
                     # name_devices.append(list_devices)
-                    name_devices += list_devices
+                    name_devices.append(list_devices)
                     
                 except FileNotFoundError:
                     logging.error(f"Ошибка класса Temperature функции collect_dev:\nОшибка существования файла /sys/class/hwmon/{index_devices}!")
@@ -157,7 +179,6 @@ class Temperature:
                     logging.error(f"Ошибка класса Temperature функции collect_dev:\nОшибка прав на чтение файла /sys/class/hwmon/{index_devices}!")
                     continue
 
-            name_devices = self.edit.sort_stdout(name_devices)
             logging.info("Класс Temperature функция collect_dev отработал штатно!")
             return name_devices
         except Exception as e:
@@ -324,11 +345,11 @@ class Grafs:
                 logging.error(f"Ошибка класса Grafs функции take_name_gr:\n{e}")
                 return [], []
             
-        def graf(self, x: list, y: list, name: str, xlable: str, ylabel: str):
+        def graf(self, x: list, y: list, name: str, xlabel: str, ylabel: str):
             try:
                 plt.figure(figsize=(10, 6))
                 plt.plot(x, y, label=name)
-                plt.xlabel(xlable)
+                plt.xlabel(xlabel)
                 plt.ylabel(ylabel)
                 plt.title(name)
                 # plt.show()

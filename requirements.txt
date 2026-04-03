@@ -1,5 +1,5 @@
 python-telegram-bot==13.7
-psutil
+psutil==7.2.2
 python-dotenv
 requests
 dotenv

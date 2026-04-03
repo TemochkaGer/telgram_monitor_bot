@@ -8,6 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./Physical_properties.py .
 RUN chown -R dockeruser:dockeruser /app
 USER dockeruser
-HEALTHCHECK --interval=30s --timeout=5s \
-    CMD pgrep -f "Physical_properties.py" || exit 1
 CMD ["python3", "Physical_properties.py"]

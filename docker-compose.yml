@@ -4,7 +4,7 @@ networks:
 
 services:
   monitoring-service:
-    image: python-monitoring:v1
+    image: python-monitoring:v2
     container_name: my-test-monitoring
     restart: unless-stopped
     volumes:
@@ -12,6 +12,7 @@ services:
       - /sys/class/hwmon/:/sys/class/hwmon/:ro
       - ./log:/app/log
       - ./grafs:/app/grafs
+      - ./SysInfo:/app/SysInfo
     networks:
       - monitoring-test
     user: dockeruser
